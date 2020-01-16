@@ -48,7 +48,7 @@ wget https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/r
 
 * Value for `stop_id` can be retrieved from [*TTS Kraków](https://mpk.jacekk.net/). After choosing a desired stop its ID is a number visibile in URL.
 
-* These sensors provides attributes which can be used in [*HTML card*](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-card) or [*HTML Template card*](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Template-card): `html`, `html_timetable`, `html_departures`
+* These sensors provides attributes which can be used in [*HTML card*](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-card) or [*HTML Template card*](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Template-card): `html_timetable`, `html_departures`
   * HTML card:
     ```yaml
     - type: custom:html-card
