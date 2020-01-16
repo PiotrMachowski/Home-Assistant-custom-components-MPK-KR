@@ -11,6 +11,7 @@ from homeassistant.helpers.entity import async_generate_entity_id
 DEFAULT_NAME = 'MPK KR'
 
 CONF_STOPS = 'stops'
+CONF_PLATFORM = 'platform'
 CONF_LINES = 'lines'
 CONF_MODE = 'mode'
 
@@ -19,6 +20,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_STOPS): vol.All(cv.ensure_list, [
         vol.Schema({
             vol.Required(CONF_ID): cv.positive_int,
+            vol.Required(CONF_PLATFORM): cv.string,
             vol.Optional(CONF_NAME): cv.string,
             vol.Optional(CONF_MODE, default="departure"): cv.string,
             vol.Optional(CONF_LINES, default=[]): cv.ensure_list
@@ -32,25 +34,29 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     dev = []
     for stop in stops:
         stop_id = str(stop.get(CONF_ID))
+        platform = stop.get(CONF_PLATFORM)
         lines = stop.get(CONF_LINES)
         mode = stop.get(CONF_MODE)
         if mode not in ["departure", "arrival"]:
             raise Exception("Invalid mode: {}".format(mode))
-        real_stop_name = MpkKrSensor.get_stop_name(stop_id)
+        if platform not in ["tram", "bus"]:
+            raise Exception("Invalid platform: {}".format(platform))
+        real_stop_name = MpkKrSensor.get_stop_name(stop_id, platform)
         if real_stop_name is None:
             raise Exception("Invalid stop id: {}".format(stop_id))
         stop_name = stop.get(CONF_NAME) or stop_id
         uid = '{}_{}_{}'.format(name, stop_name, mode)
         entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, uid, hass=hass)
-        dev.append(MpkKrSensor(entity_id, name, stop_id, mode, stop_name, real_stop_name, lines))
+        dev.append(MpkKrSensor(entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, lines))
     add_entities(dev, True)
 
 
 class MpkKrSensor(Entity):
-    def __init__(self, entity_id, name, stop_id, mode, stop_name, real_stop_name, watched_lines):
+    def __init__(self, entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, watched_lines):
         self.entity_id = entity_id
         self._name = name
         self._stop_id = stop_id
+        self._platform = platform
         self._mode = mode
         self._watched_lines = watched_lines
         self._stop_name = stop_name
@@ -97,7 +103,7 @@ class MpkKrSensor(Entity):
         return attr
 
     def update(self):
-        data = MpkKrSensor.get_data(self._stop_id, self._mode)
+        data = MpkKrSensor.get_data(self._stop_id, self._platform, self._mode)
         if data is None:
             return
         departures = data["actual"]
@@ -170,16 +176,18 @@ class MpkKrSensor(Entity):
         return departures_by_line
 
     @staticmethod
-    def get_stop_name(stop_id):
-        data = MpkKrSensor.get_data(stop_id)
+    def get_stop_name(stop_id, platform):
+        data = MpkKrSensor.get_data(stop_id, platform)
         if data is None:
             return None
         return data["stopName"]
 
     @staticmethod
-    def get_data(stop_id, mode="departure"):
-        address = 'http://www.ttss.krakow.pl/internetservice/services/passageInfo/stopPassages/stop?stop={}&mode={}&language=pl'.format(
-            stop_id, mode)
+    def get_data(stop_id, platform, mode="departure"):
+        base_url_tram = 'http://www.ttss.krakow.pl/internetservice/services/passageInfo/stopPassages/stop?stop={}&mode={}&language=pl'
+        base_url_bus = 'http://ttss.mpk.krakow.pl/internetservice/services/passageInfo/stopPassages/stop?stop={}&mode={}'
+        base_url = base_url_tram if platform == "tram" else base_url_bus
+        address = base_url.format(stop_id, mode)
         response = requests.get(address)
         if response.status_code == 200 and response.content.__len__() > 0:
             return response.json()
