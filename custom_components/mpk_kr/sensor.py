@@ -45,7 +45,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if real_stop_name is None:
             raise Exception("Invalid stop id: {}".format(stop_id))
         stop_name = stop.get(CONF_NAME) or stop_id
-        uid = '{}_{}_{}'.format(name, stop_name, mode)
+        uid = '{}_{}_{}_{}'.format(name, stop_name, platform, mode)
         entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, uid, hass=hass)
         dev.append(MpkKrSensor(entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, lines))
     add_entities(dev, True)
