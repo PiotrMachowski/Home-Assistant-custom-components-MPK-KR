@@ -14,6 +14,7 @@ CONF_STOPS = 'stops'
 CONF_PLATFORM = 'platform'
 CONF_LINES = 'lines'
 CONF_MODE = 'mode'
+CONF_DIRECTIONS = 'directions'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -23,7 +24,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
             vol.Required(CONF_PLATFORM): cv.string,
             vol.Optional(CONF_NAME): cv.string,
             vol.Optional(CONF_MODE, default="departure"): cv.string,
-            vol.Optional(CONF_LINES, default=[]): cv.ensure_list
+            vol.Optional(CONF_LINES, default=[]): cv.ensure_list,
+            vol.Optional(CONF_DIRECTIONS, default=[]): cv.ensure_list
         })])
 })
 
@@ -36,6 +38,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         stop_id = str(stop.get(CONF_ID))
         platform = stop.get(CONF_PLATFORM)
         lines = stop.get(CONF_LINES)
+        directions = stop.get(CONF_DIRECTIONS)
         mode = stop.get(CONF_MODE)
         if mode not in ["departure", "arrival"]:
             raise Exception("Invalid mode: {}".format(mode))
@@ -47,18 +50,20 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         stop_name = stop.get(CONF_NAME) or stop_id
         uid = '{}_{}_{}_{}'.format(name, stop_name, platform, mode)
         entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, uid, hass=hass)
-        dev.append(MpkKrSensor(entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, lines))
+        dev.append(MpkKrSensor(entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, lines, directions))
     add_entities(dev, True)
 
 
 class MpkKrSensor(Entity):
-    def __init__(self, entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, watched_lines):
+    def __init__(self, entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, watched_lines,
+                 watched_directions):
         self.entity_id = entity_id
         self._name = name
         self._stop_id = stop_id
         self._platform = platform
         self._mode = mode
         self._watched_lines = watched_lines
+        self._watched_directions = watched_directions
         self._stop_name = stop_name
         self._real_stop_name = real_stop_name
         self._departures = []
@@ -110,12 +115,13 @@ class MpkKrSensor(Entity):
         parsed_departures = []
         for departure in departures:
             line = departure["patternText"]
-            if len(self._watched_lines) > 0 and line not in self._watched_lines:
+            direction = departure["direction"]
+            if len(self._watched_lines) > 0 and line not in self._watched_lines \
+                    or len(self._watched_directions) > 0 and direction not in self._watched_directions:
                 continue
             status = departure["status"]
             planned_time = departure["plannedTime"]
             actual_time = departure["actualTime"] if status == "PREDICTED" else planned_time
-            direction = departure["direction"]
             time_to_departure = departure["actualRelativeTime"] // 60
             parsed_departures.append(
                 {

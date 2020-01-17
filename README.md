@@ -8,7 +8,7 @@ This sensor use official API provided by MPK Kraków.
 
 | Key | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `name` | `string` | `False` | `iMPK` | Name of sensor |
+| `name` | `string` | `False` | `MPK KR` | Name of sensor |
 | `stops` | `list` | `True` | - | List of stop configurations |
 
 ### Stop configuration
@@ -20,6 +20,7 @@ This sensor use official API provided by MPK Kraków.
 | `mode` | `string` | `False` | `departure` | One of `departure` or `arrival` |
 | `name` | `string` | `False` | id | Name of a stop |
 | `lines` | `list` | `False` | all available | List of monitored lines. |
+| `directions` | `list` | `False` | all available | List of monitored directions. |
 
 ## Example usage
 
@@ -29,9 +30,13 @@ sensor:
       stops:
         - id: 623
           platform: bus
+          lines:
+            - "274"
         - id: 1173
           platform: tram
           mode: arrival
+          directions:
+            - "Nowy Bieżanów P+R"
 ```
 
 ## Installation
@@ -46,7 +51,7 @@ wget https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/r
 
 ## Hints
 
-* Value for `stop_id` can be retrieved from [*TTS Kraków](https://mpk.jacekk.net/). After choosing a desired stop its ID is a number visibile in URL.
+* Value for `stop_id` can be retrieved from [*TTS Kraków*](https://mpk.jacekk.net/). After choosing a desired stop its ID is a number visibile in URL.
 
 * These sensors provides attributes which can be used in [*HTML card*](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-card) or [*HTML Template card*](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Template-card): `html_timetable`, `html_departures`
   * HTML card:
