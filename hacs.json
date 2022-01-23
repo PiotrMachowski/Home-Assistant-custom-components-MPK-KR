@@ -1,0 +1,8 @@
+{
+  "name": "MPK Kraków",
+  "domains": ["sensor"],
+  "country": "PL",
+  "render_readme": true,
+  "zip_release": true,
+  "filename": "mpk_kr.zip"
+}

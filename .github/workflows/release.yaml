@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download repo
+        uses: actions/checkout@v1
+
+      - name: Zip mpk_kr dir
+        run: |
+          cd /home/runner/work/Home-Assistant-custom-components-MPK-KR/Home-Assistant-custom-components-MPK-KR/custom_components/mpk_kr
+          zip mpk_kr.zip -r ./
+
+      - name: Upload zip to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: /home/runner/work/Home-Assistant-custom-components-MPK-KR/Home-Assistant-custom-components-MPK-KR/custom_components/mpk_kr/mpk_kr.zip
+          asset_name: mpk_kr.zip
+          tag: ${{ github.ref }}
+          overwrite: true
