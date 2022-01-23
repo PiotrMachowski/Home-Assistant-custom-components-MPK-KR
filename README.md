@@ -1,9 +1,28 @@
+[![HACS Custom][hacs_shield]][hacs]
+[![GitHub Latest Release][releases_shield]][latest_release]
+[![GitHub All Releases][downloads_total_shield]][releases]
+[![Buy me a coffee][buy_me_a_coffee_shield]][buy_me_a_coffee]
+[![PayPal.Me][paypal_me_shield]][paypal_me]
+
+
+[hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Custom&style=popout&color=orange&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
+[hacs]: https://hacs.xyz/docs/faq/custom_repositories
+
+[latest_release]: https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/releases/latest
+[releases_shield]: https://img.shields.io/github/release/PiotrMachowski/Home-Assistant-custom-components-MPK-KR.svg?style=popout
+
+[releases]: https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/releases
+[downloads_total_shield]: https://img.shields.io/github/downloads/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/total
+
+[buy_me_a_coffee_shield]: https://img.shields.io/static/v1.svg?label=%20&message=Buy%20me%20a%20coffee&color=6f4e37&logo=buy%20me%20a%20coffee&logoColor=white
+[buy_me_a_coffee]: https://www.buymeacoffee.com/PiotrMachowski
+
+[paypal_me_shield]: https://img.shields.io/static/v1.svg?label=%20&message=PayPal.Me&logo=paypal
+[paypal_me]: https://paypal.me/PiMachowski
+
 # MPK Kraków sensor
 
-[![buymeacoffee_badge](https://img.shields.io/badge/Donate-Buy%20Me%20a%20Coffee-ff813f?style=flat)](https://www.buymeacoffee.com/PiotrMachowski)
-[![paypalme_badge](https://img.shields.io/badge/Donate-PayPal-0070ba?style=flat)](https://paypal.me/PiMachowski)
-
-This sensor use official API provided by MPK Kraków.
+This sensor uses official API provided by MPK Kraków.
 
 ## Configuration options
 
@@ -42,12 +61,23 @@ sensor:
 
 ## Installation
 
-Download [*sensor.py*](https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/raw/master/custom_components/mpk_kr/sensor.py) and [*manifest.json*](https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/raw/master/custom_components/mpk_kr/manifest.json) to `config/custom_components/mpk_kr` directory:
+### Using [HACS](https://hacs.xyz/) (recommended)
+
+This integration can be added to HACS as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories):
+* URL: `https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR`
+* Category: `Integration`
+
+After adding a custom repository you can use HACS to install this integration using user interface.
+
+### Manual
+
+To install this integration manually you have to download [*mpk_kr.zip*](https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/releases/latest/download/mpk_kr.zip) extract its contents to `config/custom_components/mpk_kr` directory:
 ```bash
 mkdir -p custom_components/mpk_kr
 cd custom_components/mpk_kr
-wget https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/raw/master/custom_components/mpk_kr/sensor.py
-wget https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/raw/master/custom_components/mpk_kr/manifest.json
+wget https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/releases/latest/download/mpk_kr.zip
+unzip mpk_kr.zip
+rm mpk_kr.zip
 ```
 
 ## Hints
@@ -78,3 +108,4 @@ wget https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/r
     ```
 
 <a href="https://www.buymeacoffee.com/PiotrMachowski" target="_blank"><img src="https://bmc-cdn.nyc3.digitaloceanspaces.com/BMC-button-images/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: auto !important;width: auto !important;" ></a>
+<a href="https://paypal.me/PiMachowski" target="_blank"><img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" border="0" alt="PayPal Logo" style="height: auto !important;width: auto !important;"></a>
