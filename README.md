@@ -71,7 +71,7 @@ After adding a custom repository you can use HACS to install this integration us
 
 ### Manual
 
-To install this integration manually you have to download [*mpk_kr.zip*](https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/releases/latest/download/mpk_kr.zip) extract its contents to `config/custom_components/mpk_kr` directory:
+To install this integration manually you have to download [*mpk_kr.zip*](https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/releases/latest/download/mpk_kr.zip) and extract its contents to `config/custom_components/mpk_kr` directory:
 ```bash
 mkdir -p custom_components/mpk_kr
 cd custom_components/mpk_kr
