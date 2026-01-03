@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 
 import voluptuous as vol
 
@@ -108,29 +109,27 @@ class MpkKrSensor(Entity):
         return attr
 
     def update(self):
-        data = MpkKrSensor.get_data(self._stop_id, self._platform, self._mode)
+        data = MpkKrSensor.get_data(self._stop_id)
         if data is None:
             return
-        departures = data["actual"]
         parsed_departures = []
-        for departure in departures:
-            line = departure["patternText"]
+        now = datetime.now()
+        for departure in data:
+            line = departure["line"]
             direction = departure["direction"]
             if len(self._watched_lines) > 0 and line not in self._watched_lines \
                     or len(self._watched_directions) > 0 and direction not in self._watched_directions:
                 continue
-            status = departure["status"]
-            planned_time = departure["plannedTime"]
-            actual_time = departure["actualTime"] if status == "PREDICTED" else planned_time
-            time_to_departure = departure["actualRelativeTime"] // 60
+            departure_time = departure["time"]
+            time_to_departure = MpkKrSensor.calculate_time_to_departure(departure_time, now)
             parsed_departures.append(
                 {
                     "line": line,
                     "direction": direction,
-                    "departure": actual_time,
-                    "original_departure": planned_time,
-                    "time_to_departure": int(time_to_departure),
-                    "status": status
+                    "departure": departure_time,
+                    "original_departure": departure_time,
+                    "time_to_departure": time_to_departure,
+                    "status": "SCHEDULED"
                 })
         self._departures = parsed_departures
         self._departures_number = len(parsed_departures)
@@ -182,18 +181,29 @@ class MpkKrSensor(Entity):
         return departures_by_line
 
     @staticmethod
-    def get_stop_name(stop_id, platform):
-        data = MpkKrSensor.get_data(stop_id, platform)
-        if data is None:
-            return None
-        return data["stopName"]
+    def calculate_time_to_departure(departure_time_str, now):
+        try:
+            dep_time = datetime.strptime(departure_time_str, "%H:%M")
+            dep_time = dep_time.replace(year=now.year, month=now.month, day=now.day)
+            diff = (dep_time - now).total_seconds() / 60
+            if diff < -60:
+                dep_time = dep_time.replace(day=now.day + 1)
+                diff = (dep_time - now).total_seconds() / 60
+            return int(diff)
+        except ValueError:
+            return 0
 
     @staticmethod
-    def get_data(stop_id, platform, mode="departure"):
-        base_url_tram = 'https://www.ttss.krakow.pl/internetservice/services/passageInfo/stopPassages/stop?stop={}&mode={}&language=pl'
-        base_url_bus = 'https://ttss.mpk.krakow.pl/internetservice/services/passageInfo/stopPassages/stop?stop={}&mode={}'
-        base_url = base_url_tram if platform == "tram" else base_url_bus
-        address = base_url.format(stop_id, mode)
+    def get_stop_name(stop_id, platform):
+        data = MpkKrSensor.get_data(stop_id)
+        if data is None or len(data) == 0:
+            return None
+        return f"Stop {stop_id}"
+
+    @staticmethod
+    def get_data(stop_id):
+        base_url = 'https://api.ttss.pl/schedule/?type=t&id={}'
+        address = base_url.format(stop_id)
         response = requests.get(address)
         if response.status_code == 200 and response.content.__len__() > 0:
             return response.json()
