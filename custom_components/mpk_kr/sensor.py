@@ -1,12 +1,16 @@
+import logging
+
 import requests
 
 import voluptuous as vol
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, ENTITY_ID_FORMAT
-from homeassistant.const import CONF_ID, CONF_NAME
+from homeassistant.const import CONF_ID, CONF_NAME, CONF_VERIFY_SSL
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity import async_generate_entity_id
+
+_LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = 'MPK KR'
 
@@ -15,9 +19,14 @@ CONF_PLATFORM = 'platform'
 CONF_LINES = 'lines'
 CONF_MODE = 'mode'
 CONF_DIRECTIONS = 'directions'
+CONF_CA_BUNDLE = 'ca_bundle'
+
+REQUEST_TIMEOUT = 10
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+    vol.Optional(CONF_VERIFY_SSL, default=True): cv.boolean,
+    vol.Optional(CONF_CA_BUNDLE): cv.isfile,
     vol.Required(CONF_STOPS): vol.All(cv.ensure_list, [
         vol.Schema({
             vol.Required(CONF_ID): cv.positive_int,
@@ -33,6 +42,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 def setup_platform(hass, config, add_entities, discovery_info=None):
     name = config.get(CONF_NAME)
     stops = config.get(CONF_STOPS)
+    verify = config.get(CONF_CA_BUNDLE) or config.get(CONF_VERIFY_SSL)
     dev = []
     for stop in stops:
         stop_id = str(stop.get(CONF_ID))
@@ -41,27 +51,35 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         directions = stop.get(CONF_DIRECTIONS)
         mode = stop.get(CONF_MODE)
         if mode not in ["departure", "arrival"]:
-            raise Exception("Invalid mode: {}".format(mode))
+            _LOGGER.error("Invalid mode '%s' for stop %s, skipping this stop", mode, stop_id)
+            continue
         if platform not in ["tram", "bus"]:
-            raise Exception("Invalid platform: {}".format(platform))
-        real_stop_name = MpkKrSensor.get_stop_name(stop_id, platform)
+            _LOGGER.error("Invalid platform '%s' for stop %s, skipping this stop", platform, stop_id)
+            continue
+        real_stop_name = MpkKrSensor.get_stop_name(stop_id, platform, verify)
         if real_stop_name is None:
-            raise Exception("Invalid stop id: {}".format(stop_id))
+            _LOGGER.warning("No data returned for stop %s (%s), skipping this stop", stop_id, platform)
+            continue
         stop_name = stop.get(CONF_NAME) or stop_id
         uid = '{}_{}_{}_{}'.format(name, stop_name, platform, mode)
         entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, uid, hass=hass)
-        dev.append(MpkKrSensor(entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, lines, directions))
+        dev.append(MpkKrSensor(entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, lines, directions,
+                               verify))
+    if not dev:
+        _LOGGER.error("No sensors were created, check stop ids and TTSS availability")
+        return
     add_entities(dev, True)
 
 
 class MpkKrSensor(Entity):
     def __init__(self, entity_id, name, stop_id, platform, mode, stop_name, real_stop_name, watched_lines,
-                 watched_directions):
+                 watched_directions, verify=True):
         self.entity_id = entity_id
         self._name = name
         self._stop_id = stop_id
         self._platform = platform
         self._mode = mode
+        self._verify = verify
         self._watched_lines = watched_lines
         self._watched_directions = watched_directions
         self._stop_name = stop_name
@@ -108,10 +126,10 @@ class MpkKrSensor(Entity):
         return attr
 
     def update(self):
-        data = MpkKrSensor.get_data(self._stop_id, self._platform, self._mode)
+        data = MpkKrSensor.get_data(self._stop_id, self._platform, self._mode, self._verify)
         if data is None:
             return
-        departures = data["actual"]
+        departures = data.get("actual") or []
         parsed_departures = []
         for departure in departures:
             line = departure["patternText"]
@@ -182,19 +200,33 @@ class MpkKrSensor(Entity):
         return departures_by_line
 
     @staticmethod
-    def get_stop_name(stop_id, platform):
-        data = MpkKrSensor.get_data(stop_id, platform)
+    def get_stop_name(stop_id, platform, verify=True):
+        data = MpkKrSensor.get_data(stop_id, platform, verify=verify)
         if data is None:
             return None
-        return data["stopName"]
+        return data.get("stopName")
 
     @staticmethod
-    def get_data(stop_id, platform, mode="departure"):
+    def get_data(stop_id, platform, mode="departure", verify=True):
         base_url_tram = 'https://www.ttss.krakow.pl/internetservice/services/passageInfo/stopPassages/stop?stop={}&mode={}&language=pl'
         base_url_bus = 'https://ttss.mpk.krakow.pl/internetservice/services/passageInfo/stopPassages/stop?stop={}&mode={}'
         base_url = base_url_tram if platform == "tram" else base_url_bus
         address = base_url.format(stop_id, mode)
-        response = requests.get(address)
-        if response.status_code == 200 and response.content.__len__() > 0:
+        try:
+            response = requests.get(address, timeout=REQUEST_TIMEOUT, verify=verify)
+        except requests.exceptions.SSLError as err:
+            _LOGGER.warning("SSL error for stop %s: %s. TTSS servers send an incomplete certificate chain; "
+                            "see README for the 'ca_bundle' option", stop_id, err)
+            return None
+        except requests.exceptions.RequestException as err:
+            _LOGGER.warning("Connection error for stop %s: %s", stop_id, err)
+            return None
+        if response.status_code != 200 or len(response.content) == 0:
+            _LOGGER.warning("Unexpected response for stop %s: HTTP %s, %s bytes",
+                            stop_id, response.status_code, len(response.content))
+            return None
+        try:
             return response.json()
-        return None
+        except ValueError as err:
+            _LOGGER.warning("Invalid JSON for stop %s: %s", stop_id, err)
+            return None
