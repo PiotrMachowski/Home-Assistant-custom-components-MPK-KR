@@ -27,6 +27,8 @@ This sensor uses official API provided by MPK Kraków.
 | --- | --- | --- | --- | --- |
 | `name` | `string` | `False` | `MPK KR` | Name of sensor |
 | `stops` | `list` | `True` | - | List of stop configurations |
+| `ca_bundle` | `string` | `False` | - | Path to a CA bundle used to verify TTSS certificates. See [*TLS certificate issue*](#tls-certificate-issue) |
+| `verify_ssl` | `boolean` | `False` | `True` | Set to `False` to disable certificate verification. Ignored when `ca_bundle` is set |
 
 ### Stop configuration
 
@@ -76,6 +78,47 @@ wget https://github.com/PiotrMachowski/Home-Assistant-custom-components-MPK-KR/r
 unzip mpk_kr.zip
 rm mpk_kr.zip
 ```
+
+## TLS certificate issue
+
+TTSS servers send an **incomplete certificate chain**: instead of the intermediate certificate
+(`Certum OV TLS G2 R39 CA`) they send the root certificate (`Certum Trusted Root CA`).
+
+Web browsers hide this problem by downloading the missing intermediate certificate through the AIA
+extension. Python does not do that, so the integration fails with:
+
+```
+SSLError: CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate
+```
+
+This has been reported to MPK Kraków. Until it is fixed on their side, the missing certificate has to
+be provided locally.
+
+1. Download the intermediate certificate and save it together with the root certificate as
+   `config/mpk_ca.pem`:
+
+   ```bash
+   curl -s http://certumovtlsg2r39ca.repository.certum.pl/certumovtlsg2r39ca.cer \
+     | openssl x509 -inform DER -outform PEM > config/mpk_ca.pem
+   curl -s http://subca.repository.certum.pl/ctrca.cer \
+     | openssl x509 -inform DER -outform PEM >> config/mpk_ca.pem
+   ```
+
+   Both URLs come from the `Authority Information Access` extension of the certificates themselves.
+
+2. Point the integration to it:
+
+   ```yaml
+   sensor:
+     - platform: mpk_kr
+       ca_bundle: /config/mpk_ca.pem
+       stops:
+         - id: 623
+           platform: bus
+   ```
+
+As a last resort `verify_ssl: false` disables certificate verification entirely. This is **not
+recommended** – it removes protection against man-in-the-middle attacks.
 
 ## Hints
 
